@@ -59,12 +59,15 @@ async fn main() -> Result<()> {
     // Initialize tracing based on config or verbose flag
     let verbose = args.verbose || config.general.log_level == "debug" || config.general.log_level == "trace";
     if verbose {
-        let level = match config.general.log_level.as_str() {
-            "trace" => Level::TRACE,
-            "debug" => Level::DEBUG,
-            "info" => Level::INFO,
-            "warn" => Level::WARN,
-            _ => Level::DEBUG,
+        // CLI --verbose flag overrides config to use DEBUG level
+        let level = if args.verbose {
+            Level::DEBUG
+        } else {
+            match config.general.log_level.as_str() {
+                "trace" => Level::TRACE,
+                "debug" => Level::DEBUG,
+                _ => Level::DEBUG,
+            }
         };
         FmtSubscriber::builder()
             .with_max_level(level)
@@ -83,10 +86,10 @@ async fn main() -> Result<()> {
     // Create the log entry channel
     let (sender, mut receiver) = create_log_channel(config.general.buffer_size);
 
-    // Create the pipeline (empty for now, modules will be added later)
-    let pipeline = Pipeline::new();
+    // Create the pipeline with modules from config
+    let pipeline = Pipeline::from_config(&config.modules);
     if verbose {
-        info!(modules = ?pipeline.module_names(), "Pipeline initialized");
+        info!(modules = ?pipeline.module_names(), "Pipeline initialized with {} module(s)", pipeline.module_count());
     }
 
     // Create the output writer
