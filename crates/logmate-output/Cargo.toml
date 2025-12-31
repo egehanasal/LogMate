@@ -6,8 +6,28 @@ authors.workspace = true
 license.workspace = true
 description = "Output sinks for LogMate (stdout, file, Grafana)"
 
+[features]
+default = ["loki", "prometheus"]
+loki = ["dep:reqwest", "dep:serde"]
+prometheus = ["dep:prometheus", "dep:hyper", "dep:hyper-util", "dep:http-body-util"]
+
 [dependencies]
 logmate-core = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+chrono = { workspace = true }
+flate2 = { workspace = true }
+
+# Loki integration
+reqwest = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+
+# Prometheus metrics
+prometheus = { workspace = true, optional = true }
+hyper = { workspace = true, optional = true }
+hyper-util = { workspace = true, optional = true }
+http-body-util = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
