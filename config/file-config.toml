@@ -1,0 +1,17 @@
+# File watching ingestion config
+# Usage: cargo run -q -- -c config/file-config.toml
+#
+# Test with:
+#   Terminal 1: cargo run -q -- -c config/file-config.toml
+#   Terminal 2: echo "ERROR: Test log message" >> /tmp/test-logmate.log
+
+[ingestion.stdin]
+enabled = false
+
+[ingestion.file]
+enabled = true
+paths = ["/tmp/test-logmate.log"]
+tail = true  # Start from end of file
+
+[modules.pattern_detection]
+enabled = true

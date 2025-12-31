@@ -1,0 +1,25 @@
+# File output testing config
+# Usage: cargo run -q -- -c config/file-output-config.toml
+#
+# Test with:
+#   echo -e "ERROR: Test 1\nINFO: Test 2\nWARN: Test 3" | cargo run -q -- -c config/file-output-config.toml
+#   cat /tmp/logmate-test.jsonl
+
+[ingestion.stdin]
+enabled = true
+
+[modules.pattern_detection]
+enabled = true
+
+[output.stdout]
+enabled = true
+format = "pretty"
+
+[output.file]
+enabled = true
+path = "/tmp/logmate-test.jsonl"
+format = "jsonl"        # Options: jsonl, json, text
+rotation = "size"       # Options: daily, hourly, size, none
+max_size = "10MB"
+max_files = 5
+compress = false        # Set to true to gzip rotated files

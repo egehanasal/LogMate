@@ -1,0 +1,28 @@
+# Performance metrics testing config
+# Usage: cargo run -q -- -c config/perf-config.toml
+#
+# Test with logs containing latency values:
+#   echo "Request took 150ms" | cargo run -q -- -c config/perf-config.toml
+#   echo "Query completed in 2.5s, status=200" | cargo run -q -- -c config/perf-config.toml
+#   echo "API latency=45ms user=john" | cargo run -q -- -c config/perf-config.toml
+
+[ingestion.stdin]
+enabled = true
+
+[modules.pattern_detection]
+enabled = true
+
+[modules.performance_metrics]
+enabled = true
+latency_patterns = [
+    'took (?P<duration>\d+\.?\d*)(?P<unit>ms|s|us)?',
+    'latency[=:]\s*(?P<duration>\d+\.?\d*)(?P<unit>ms|s)?',
+    'completed in (?P<duration>\d+\.?\d*)(?P<unit>ms|s)?',
+    'response_time[=:]\s*(?P<duration>\d+\.?\d*)(?P<unit>ms|s)?',
+]
+windows = ["1m", "5m", "15m"]
+percentiles = [50, 90, 95, 99]
+
+[output.stdout]
+enabled = true
+format = "pretty"

@@ -1,0 +1,26 @@
+# Security module testing config
+# Usage: cargo run -q -- -c config/security-config.toml
+#
+# Test with various attack patterns:
+#   echo "Query: ' OR 1=1--" | cargo run -q -- -c config/security-config.toml
+#   echo "Input: <script>alert('xss')</script>" | cargo run -q -- -c config/security-config.toml
+#   echo "File: ../../etc/passwd" | cargo run -q -- -c config/security-config.toml
+#   echo "Login failed for user admin" | cargo run -q -- -c config/security-config.toml
+#   echo "Config: api_key=sk_live_1234567890abcdefghij" | cargo run -q -- -c config/security-config.toml
+
+[ingestion.stdin]
+enabled = true
+
+[modules.pattern_detection]
+enabled = true
+
+[modules.security]
+enabled = true
+detect_sql_injection = true
+detect_xss = true
+detect_path_traversal = true
+detect_auth_failures = true
+
+[output.stdout]
+enabled = true
+format = "pretty"
