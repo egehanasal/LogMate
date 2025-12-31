@@ -1,0 +1,22 @@
+[package]
+name = "logmate"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "LogMate - High-performance observability engine"
+
+[[bin]]
+name = "logmate"
+path = "src/main.rs"
+
+[dependencies]
+logmate-core = { workspace = true }
+logmate-ingestion = { workspace = true }
+logmate-pipeline = { workspace = true }
+logmate-output = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
