@@ -1,0 +1,13 @@
+# UDP-only ingestion config (syslog-compatible)
+# Usage: cargo run -q -- -c config/udp-config.toml
+
+[ingestion.stdin]
+enabled = false
+
+[ingestion.udp]
+enabled = true
+bind_address = "127.0.0.1"
+port = 9515
+
+[modules.pattern_detection]
+enabled = true

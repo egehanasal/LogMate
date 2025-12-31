@@ -1,0 +1,14 @@
+# TCP-only ingestion config
+# Usage: cargo run -q -- -c config/tcp-config.toml
+
+[ingestion.stdin]
+enabled = false
+
+[ingestion.tcp]
+enabled = true
+bind_address = "127.0.0.1"
+port = 9514
+max_connections = 100
+
+[modules.pattern_detection]
+enabled = true
