@@ -417,8 +417,12 @@ pub struct LokiConfig {
     pub endpoint: String,
     /// Batch size for log entries
     pub batch_size: usize,
-    /// Batch timeout (e.g., "5s")
-    pub batch_timeout: String,
+    /// Flush interval in seconds
+    pub flush_interval_seconds: u32,
+    /// HTTP timeout in seconds
+    pub timeout_seconds: u32,
+    /// Static labels to add to all log streams
+    pub labels: std::collections::HashMap<String, String>,
 }
 
 impl Default for LokiConfig {
@@ -427,7 +431,9 @@ impl Default for LokiConfig {
             enabled: false,
             endpoint: "http://localhost:3100/loki/api/v1/push".to_string(),
             batch_size: 100,
-            batch_timeout: "5s".to_string(),
+            flush_interval_seconds: 5,
+            timeout_seconds: 30,
+            labels: std::collections::HashMap::new(),
         }
     }
 }

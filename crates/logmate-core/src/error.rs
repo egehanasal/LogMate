@@ -53,6 +53,9 @@ pub enum OutputError {
     #[error("Grafana push error: {0}")]
     Grafana(String),
 
+    #[error("Network error: {0}")]
+    Network(String),
+
     #[error("Serialization error: {0}")]
     Serialization(String),
 }
