@@ -9,6 +9,12 @@ pub mod pattern;
 #[cfg(feature = "parser")]
 pub mod parser;
 
+#[cfg(feature = "metrics")]
+pub mod performance;
+
+#[cfg(feature = "security")]
+pub mod security;
+
 // Re-export the core Module trait for convenience
 pub use logmate_core::{Module, PassthroughModule};
 
@@ -18,3 +24,9 @@ pub use pattern::PatternDetectionModule;
 
 #[cfg(feature = "parser")]
 pub use parser::StructuralParserModule;
+
+#[cfg(feature = "metrics")]
+pub use performance::PerformanceMetricsModule;
+
+#[cfg(feature = "security")]
+pub use security::SecurityModule;

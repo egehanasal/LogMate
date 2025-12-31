@@ -1,6 +1,6 @@
 use logmate_core::config::ModulesConfig;
 use logmate_core::{EnrichedEntry, LogEntry, LogMateError, Module, Result};
-use logmate_modules::{PatternDetectionModule, StructuralParserModule};
+use logmate_modules::{PatternDetectionModule, PerformanceMetricsModule, SecurityModule, StructuralParserModule};
 use tracing::{debug, info, warn};
 
 /// Pipeline that orchestrates log processing through multiple modules
@@ -34,9 +34,19 @@ impl Pipeline {
             pipeline.modules.push(Box::new(module));
         }
 
-        // Future modules will be added here:
-        // if config.performance_metrics.enabled { ... }
-        // if config.security.enabled { ... }
+        // Add performance metrics module if enabled
+        if config.performance_metrics.enabled {
+            let module = PerformanceMetricsModule::new(config.performance_metrics.clone());
+            info!(module = module.name(), "Adding module to pipeline");
+            pipeline.modules.push(Box::new(module));
+        }
+
+        // Add security module if enabled
+        if config.security.enabled {
+            let module = SecurityModule::new(config.security.clone());
+            info!(module = module.name(), "Adding module to pipeline");
+            pipeline.modules.push(Box::new(module));
+        }
 
         pipeline
     }

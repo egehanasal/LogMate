@@ -7,11 +7,11 @@ license.workspace = true
 description = "Processing modules for LogMate"
 
 [features]
-default = ["pattern", "parser"]
+default = ["pattern", "parser", "metrics", "security"]
 pattern = []
 parser = []
-metrics = []
-security = []
+metrics = ["dep:hdrhistogram", "dep:chrono"]
+security = ["dep:aho-corasick"]
 full = ["pattern", "parser", "metrics", "security"]
 
 [dependencies]
@@ -19,3 +19,6 @@ logmate-core = { workspace = true }
 regex = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+hdrhistogram = { workspace = true, optional = true }
+chrono = { workspace = true, optional = true }
+aho-corasick = { workspace = true, optional = true }
