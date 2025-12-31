@@ -1,4 +1,6 @@
+use logmate_core::config::ModulesConfig;
 use logmate_core::{EnrichedEntry, LogEntry, LogMateError, Module, Result};
+use logmate_modules::PatternDetectionModule;
 use tracing::{debug, info, warn};
 
 /// Pipeline that orchestrates log processing through multiple modules
@@ -12,6 +14,25 @@ impl Pipeline {
         Self {
             modules: Vec::new(),
         }
+    }
+
+    /// Create a pipeline from configuration
+    pub fn from_config(config: &ModulesConfig) -> Self {
+        let mut pipeline = Self::new();
+
+        // Add pattern detection module if enabled
+        if config.pattern_detection.enabled {
+            let module = PatternDetectionModule::new(config.pattern_detection.clone());
+            info!(module = module.name(), "Adding module to pipeline");
+            pipeline.modules.push(Box::new(module));
+        }
+
+        // Future modules will be added here:
+        // if config.structural_parser.enabled { ... }
+        // if config.performance_metrics.enabled { ... }
+        // if config.security.enabled { ... }
+
+        pipeline
     }
 
     /// Add a module to the pipeline
