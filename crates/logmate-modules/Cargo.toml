@@ -17,4 +17,5 @@ full = ["pattern", "parser", "metrics", "security"]
 [dependencies]
 logmate-core = { workspace = true }
 regex = { workspace = true }
+serde_json = { workspace = true }
 tracing = { workspace = true }
