@@ -1,0 +1,148 @@
+# LogMate Configuration
+# Copy this file to logmate.toml and customize as needed
+
+# =============================================================================
+# GENERAL SETTINGS
+# =============================================================================
+[general]
+# Instance name for identification in distributed setups
+instance_name = "logmate"
+
+# Internal log level: trace, debug, info, warn, error
+log_level = "warn"
+
+# Buffer size for backpressure handling (number of log entries)
+buffer_size = 10000
+
+# =============================================================================
+# INGESTION SOURCES
+# Multiple sources can be enabled simultaneously
+# =============================================================================
+
+[ingestion.stdin]
+# Read logs from standard input (for piping)
+enabled = true
+
+[ingestion.tcp]
+# TCP socket listener for log ingestion
+enabled = false
+bind_address = "127.0.0.1"
+port = 9514
+max_connections = 100
+
+[ingestion.udp]
+# UDP socket listener (syslog-compatible)
+enabled = false
+bind_address = "127.0.0.1"
+port = 9515
+
+[ingestion.file]
+# File watcher (tail -f style)
+enabled = false
+# Paths support glob patterns
+paths = [
+    # "/var/log/app/*.log",
+    # "/var/log/nginx/access.log"
+]
+# Start from end of file (true) or beginning (false)
+tail = true
+
+# =============================================================================
+# PROCESSING MODULES
+# Modules are processed in order. Disabled modules have zero overhead.
+# =============================================================================
+
+[modules.pattern_detection]
+# Detect log levels and error codes
+enabled = true
+detect_levels = true      # ERROR, WARN, INFO, DEBUG, TRACE, FATAL
+detect_error_codes = true
+
+# Custom patterns with named capture groups
+# custom_patterns = [
+#     { name = "request_id", pattern = 'req_id=(?P<id>[a-f0-9-]+)' },
+#     { name = "user_id", pattern = 'user=(?P<uid>\d+)' }
+# ]
+
+[modules.performance_metrics]
+# Extract and track latency data
+enabled = false
+
+# Patterns to extract latency values
+latency_patterns = [
+    'took (?P<duration>\d+)(?P<unit>ms|s|us)',
+    'latency[=:]\s*(?P<duration>\d+\.?\d*)(?P<unit>ms|s)?'
+]
+
+# Rolling windows for statistics
+windows = ["1m", "5m", "15m"]
+
+# Percentiles to calculate
+percentiles = [50, 90, 95, 99]
+
+[modules.security]
+# Security and anomaly detection
+enabled = false
+detect_sql_injection = true
+detect_xss = true
+detect_path_traversal = true
+detect_auth_failures = true
+
+# Custom sensitive data patterns
+# sensitive_patterns = [
+#     { name = "credit_card", pattern = '\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b' },
+#     { name = "ssn", pattern = '\b\d{3}-\d{2}-\d{4}\b' }
+# ]
+
+[modules.structural_parser]
+# Parse unstructured logs into structured JSON
+enabled = false
+auto_detect = true
+# Explicit format: apache_combined, nginx, syslog, json, kv
+# format = "auto"
+
+# =============================================================================
+# OUTPUT TARGETS
+# Multiple outputs can be enabled simultaneously
+# =============================================================================
+
+[output.stdout]
+# Write to standard output
+enabled = true
+# Format: pretty, json, raw
+format = "pretty"
+# Enable colored output (only for pretty format)
+color = true
+
+[output.file]
+# Write to file with rotation support
+enabled = false
+path = "logmate.jsonl"
+# Format: jsonl (JSON Lines), json, text
+format = "jsonl"
+# Rotation: daily, hourly, size
+rotation = "daily"
+# Max file size for size-based rotation
+max_size = "100MB"
+# Number of rotated files to keep
+max_files = 7
+# Compress rotated files with gzip
+compress = true
+
+# =============================================================================
+# GRAFANA INTEGRATION
+# =============================================================================
+
+[output.grafana.loki]
+# Push logs to Grafana Loki
+enabled = false
+endpoint = "http://localhost:3100/loki/api/v1/push"
+batch_size = 100
+batch_timeout = "5s"
+
+[output.grafana.prometheus]
+# Expose Prometheus metrics endpoint
+enabled = false
+bind_address = "0.0.0.0"
+port = 9090
+path = "/metrics"

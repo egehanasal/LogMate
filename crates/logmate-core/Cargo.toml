@@ -9,5 +9,6 @@ description = "Core types, traits, and utilities for LogMate"
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+toml = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
