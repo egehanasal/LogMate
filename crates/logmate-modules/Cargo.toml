@@ -1,0 +1,20 @@
+[package]
+name = "logmate-modules"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Processing modules for LogMate"
+
+[features]
+default = ["pattern", "parser"]
+pattern = []
+parser = []
+metrics = []
+security = []
+full = ["pattern", "parser", "metrics", "security"]
+
+[dependencies]
+logmate-core = { workspace = true }
+regex = { workspace = true }
+tracing = { workspace = true }
