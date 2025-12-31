@@ -1,0 +1,80 @@
+# LogMate Docker Configuration
+# Optimized for containerized deployment
+
+[general]
+instance_name = "logmate-docker"
+log_level = "info"
+buffer_size = 10000
+
+# Ingestion sources
+[ingestion.stdin]
+enabled = false
+
+[ingestion.tcp]
+enabled = true
+bind_address = "0.0.0.0"
+port = 9514
+max_connections = 1000
+
+[ingestion.udp]
+enabled = true
+bind_address = "0.0.0.0"
+port = 9515
+
+[ingestion.file]
+enabled = false
+paths = []
+tail = true
+
+# Processing modules
+[modules.pattern_detection]
+enabled = true
+detect_levels = true
+detect_error_codes = true
+
+[modules.performance_metrics]
+enabled = true
+windows = ["1m", "5m", "15m"]
+
+[modules.security]
+enabled = true
+detect_sql_injection = true
+detect_xss = true
+detect_path_traversal = true
+detect_auth_failures = true
+detect_sensitive_data = true
+
+[modules.structural_parser]
+enabled = true
+auto_detect = true
+
+# Output sinks
+[output.stdout]
+enabled = true
+format = "json"
+color = false
+
+[output.file]
+enabled = true
+path = "/var/log/logmate/logs.jsonl"
+format = "jsonl"
+rotation = "daily"
+max_size = "100MB"
+max_files = 7
+compress = true
+
+[output.grafana.loki]
+enabled = false
+endpoint = "http://loki:3100/loki/api/v1/push"
+batch_size = 100
+flush_interval_seconds = 5
+timeout_seconds = 30
+
+[output.grafana.loki.labels]
+job = "logmate"
+
+[output.grafana.prometheus]
+enabled = true
+bind_address = "0.0.0.0"
+port = 9090
+path = "/metrics"
