@@ -1,0 +1,12 @@
+[package]
+name = "logmate-ingestion"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Ingestion layer for LogMate (stdin, TCP, UDP, file)"
+
+[dependencies]
+logmate-core = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
