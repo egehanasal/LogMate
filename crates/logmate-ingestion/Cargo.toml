@@ -10,3 +10,8 @@ description = "Ingestion layer for LogMate (stdin, TCP, UDP, file)"
 logmate-core = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+notify = { workspace = true }
+glob = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

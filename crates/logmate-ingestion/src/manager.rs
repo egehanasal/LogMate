@@ -1,4 +1,4 @@
-use crate::{StdinReader, TcpIngestion, UdpIngestion};
+use crate::{FileIngestion, StdinReader, TcpIngestion, UdpIngestion};
 use logmate_core::config::IngestionConfig;
 use logmate_core::LogEntry;
 use tokio::sync::mpsc;
@@ -8,7 +8,7 @@ use tracing::info;
 /// Manages multiple ingestion sources running concurrently
 pub struct IngestionManager {
     config: IngestionConfig,
-    sender: mpsc::Sender<LogEntry>,
+    sender: Option<mpsc::Sender<LogEntry>>,
     handles: Vec<JoinHandle<()>>,
 }
 
@@ -17,7 +17,7 @@ impl IngestionManager {
     pub fn new(config: IngestionConfig, sender: mpsc::Sender<LogEntry>) -> Self {
         Self {
             config,
-            sender,
+            sender: Some(sender),
             handles: Vec::new(),
         }
     }
@@ -28,9 +28,14 @@ impl IngestionManager {
     pub fn start(&mut self) -> usize {
         let mut count = 0;
 
+        let sender = match self.sender.as_ref() {
+            Some(s) => s,
+            None => return 0, // Already started
+        };
+
         // Start stdin ingestion
         if self.config.stdin.enabled {
-            let sender = self.sender.clone();
+            let sender = sender.clone();
             let handle = tokio::spawn(async move {
                 let reader = StdinReader::new();
                 if let Err(e) = reader.run(sender).await {
@@ -44,7 +49,7 @@ impl IngestionManager {
 
         // Start TCP ingestion
         if self.config.tcp.enabled {
-            let sender = self.sender.clone();
+            let sender = sender.clone();
             let tcp = TcpIngestion::new(
                 self.config.tcp.bind_address.clone(),
                 self.config.tcp.port,
@@ -66,7 +71,7 @@ impl IngestionManager {
 
         // Start UDP ingestion
         if self.config.udp.enabled {
-            let sender = self.sender.clone();
+            let sender = sender.clone();
             let udp = UdpIngestion::new(
                 self.config.udp.bind_address.clone(),
                 self.config.udp.port,
@@ -85,11 +90,31 @@ impl IngestionManager {
             );
         }
 
-        // Drop the original sender so the channel closes when all sources are done
-        // (only if stdin is the only source, since TCP/UDP run forever)
-        if count > 0 && !self.config.tcp.enabled && !self.config.udp.enabled {
-            // Stdin-only mode: receiver will close when stdin ends
+        // Start file ingestion
+        if self.config.file.enabled && !self.config.file.paths.is_empty() {
+            let sender = sender.clone();
+            let file_watcher = FileIngestion::new(
+                self.config.file.paths.clone(),
+                self.config.file.tail,
+            );
+            let handle = tokio::spawn(async move {
+                if let Err(e) = file_watcher.run(sender).await {
+                    tracing::error!(error = %e, "File ingestion error");
+                }
+            });
+            self.handles.push(handle);
+            count += 1;
+            info!(
+                paths = ?self.config.file.paths,
+                tail = self.config.file.tail,
+                "Started file ingestion"
+            );
         }
+
+        // Drop the original sender so the channel closes when all sources are done
+        // For stdin-only mode, this allows the receiver to close when stdin ends
+        // For network/file modes, those run forever anyway
+        self.sender = None;
 
         count
     }
@@ -117,6 +142,11 @@ impl IngestionManager {
     /// Check if any network ingestion is enabled
     pub fn has_network(&self) -> bool {
         self.config.tcp.enabled || self.config.udp.enabled
+    }
+
+    /// Check if file ingestion is enabled
+    pub fn has_file(&self) -> bool {
+        self.config.file.enabled && !self.config.file.paths.is_empty()
     }
 }
 
