@@ -5,8 +5,11 @@ use logmate_ingestion::{create_log_channel, IngestionManager};
 use logmate_output::{FileWriter, LokiClient, MetricsCollector, MetricsServer, OutputFormat, StdoutWriter};
 use logmate_pipeline::Pipeline;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::signal;
+use tokio::sync::watch;
 use tracing::{info, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 
@@ -38,6 +41,38 @@ fn parse_format(format: &str) -> OutputFormat {
         "raw" => OutputFormat::Raw,
         _ => OutputFormat::Pretty,
     }
+}
+
+/// Set up signal handlers for graceful shutdown
+async fn shutdown_signal(shutdown_tx: watch::Sender<bool>) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            info!("Received SIGINT (Ctrl+C), initiating graceful shutdown...");
+        }
+        _ = terminate => {
+            info!("Received SIGTERM, initiating graceful shutdown...");
+        }
+    }
+
+    // Signal shutdown
+    let _ = shutdown_tx.send(true);
 }
 
 #[tokio::main]
@@ -78,6 +113,16 @@ async fn main() -> Result<()> {
             .init();
         info!(instance = %config.general.instance_name, "Starting LogMate");
     }
+
+    // Set up shutdown signaling
+    let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
+    let shutdown_flag = Arc::new(AtomicBool::new(false));
+
+    // Spawn signal handler
+    let shutdown_tx_clone = shutdown_tx.clone();
+    tokio::spawn(async move {
+        shutdown_signal(shutdown_tx_clone).await;
+    });
 
     // Determine output format (CLI overrides config)
     let output_format = args
@@ -185,63 +230,93 @@ async fn main() -> Result<()> {
         );
     }
 
-    // Process log entries
+    // Process log entries with graceful shutdown support
     let mut processed_count: u64 = 0;
-    while let Some(entry) = receiver.recv().await {
-        let start_time = Instant::now();
-        metrics.record_received();
 
-        match pipeline.process(entry) {
-            Ok(enriched) => {
-                // Record processing metrics
-                let processing_time = start_time.elapsed().as_secs_f64();
-                metrics.record_processing_duration(processing_time);
-                metrics.record_processed(
-                    enriched.level.as_ref().map(|l| l.to_string()).as_deref(),
-                    &enriched.raw.source.to_string(),
-                );
-
-                // Record security flags
-                for flag in &enriched.security_flags {
-                    metrics.record_security_flag(&format!("{:?}", flag));
+    loop {
+        tokio::select! {
+            // Check for shutdown signal
+            _ = shutdown_rx.changed() => {
+                if *shutdown_rx.borrow() {
+                    info!("Shutdown signal received, stopping log processing...");
+                    shutdown_flag.store(true, Ordering::SeqCst);
+                    break;
                 }
-
-                // Record latency if extracted
-                if let Some(latency_ms) = enriched.latency_ms {
-                    metrics.record_latency(latency_ms);
-                }
-
-                // Write to stdout if enabled
-                if config.output.stdout.enabled {
-                    if let Err(e) = stdout_writer.write(&enriched).await {
-                        eprintln!("Stdout output error: {}", e);
-                        metrics.record_output_error("stdout");
-                    }
-                }
-
-                // Write to file if enabled
-                if let Some(ref mut fw) = file_writer {
-                    if let Err(e) = fw.write(&enriched) {
-                        eprintln!("File output error: {}", e);
-                        metrics.record_output_error("file");
-                    }
-                }
-
-                // Push to Loki if enabled
-                if let Some(ref loki) = loki_client {
-                    if let Err(e) = loki.push(&enriched).await {
-                        eprintln!("Loki push error: {}", e);
-                        metrics.record_output_error("loki");
-                    }
-                }
-
-                processed_count += 1;
             }
-            Err(e) => {
-                eprintln!("Pipeline error: {}", e);
-                metrics.record_processing_error();
+            // Process incoming log entries
+            entry = receiver.recv() => {
+                match entry {
+                    Some(entry) => {
+                        let start_time = Instant::now();
+                        metrics.record_received();
+
+                        match pipeline.process(entry) {
+                            Ok(enriched) => {
+                                // Record processing metrics
+                                let processing_time = start_time.elapsed().as_secs_f64();
+                                metrics.record_processing_duration(processing_time);
+                                metrics.record_processed(
+                                    enriched.level.as_ref().map(|l| l.to_string()).as_deref(),
+                                    &enriched.raw.source.to_string(),
+                                );
+
+                                // Record security flags
+                                for flag in &enriched.security_flags {
+                                    metrics.record_security_flag(&format!("{:?}", flag));
+                                }
+
+                                // Record latency if extracted
+                                if let Some(latency_ms) = enriched.latency_ms {
+                                    metrics.record_latency(latency_ms);
+                                }
+
+                                // Write to stdout if enabled
+                                if config.output.stdout.enabled {
+                                    if let Err(e) = stdout_writer.write(&enriched).await {
+                                        eprintln!("Stdout output error: {}", e);
+                                        metrics.record_output_error("stdout");
+                                    }
+                                }
+
+                                // Write to file if enabled
+                                if let Some(ref mut fw) = file_writer {
+                                    if let Err(e) = fw.write(&enriched) {
+                                        eprintln!("File output error: {}", e);
+                                        metrics.record_output_error("file");
+                                    }
+                                }
+
+                                // Push to Loki if enabled
+                                if let Some(ref loki) = loki_client {
+                                    if let Err(e) = loki.push(&enriched).await {
+                                        eprintln!("Loki push error: {}", e);
+                                        metrics.record_output_error("loki");
+                                    }
+                                }
+
+                                processed_count += 1;
+                            }
+                            Err(e) => {
+                                eprintln!("Pipeline error: {}", e);
+                                metrics.record_processing_error();
+                            }
+                        }
+                    }
+                    None => {
+                        // Channel closed, all sources have finished
+                        if verbose {
+                            info!("All ingestion sources closed");
+                        }
+                        break;
+                    }
+                }
             }
         }
+    }
+
+    // Graceful shutdown: flush all buffers
+    if verbose {
+        info!("Flushing output buffers...");
     }
 
     // Flush Loki buffer
@@ -269,7 +344,7 @@ async fn main() -> Result<()> {
     }
 
     if verbose {
-        info!(processed = processed_count, "Processing complete");
+        info!(processed = processed_count, "Graceful shutdown complete");
     }
 
     Ok(())
