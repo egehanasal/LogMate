@@ -1,0 +1,50 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/logmate-core",
+    "crates/logmate-ingestion",
+    "crates/logmate-pipeline",
+    "crates/logmate-modules",
+    "crates/logmate-output",
+    "crates/logmate-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["LogMate Contributors"]
+license = "MIT"
+repository = "https://github.com/yourusername/logmate"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Logging/tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Pattern matching
+regex = "1"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Internal crates
+logmate-core = { path = "crates/logmate-core" }
+logmate-ingestion = { path = "crates/logmate-ingestion" }
+logmate-pipeline = { path = "crates/logmate-pipeline" }
+logmate-modules = { path = "crates/logmate-modules" }
+logmate-output = { path = "crates/logmate-output" }
