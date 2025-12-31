@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use logmate_core::Config;
-use logmate_ingestion::{create_log_channel, StdinReader};
+use logmate_ingestion::{create_log_channel, IngestionManager};
 use logmate_output::{OutputFormat, StdoutWriter};
 use logmate_pipeline::Pipeline;
 use std::path::PathBuf;
@@ -95,23 +95,26 @@ async fn main() -> Result<()> {
     // Create the output writer
     let mut writer = StdoutWriter::with_format(parse_format(output_format));
 
-    // Spawn stdin reader (if enabled in config)
-    let stdin_handle = if config.ingestion.stdin.enabled {
-        Some(tokio::spawn(async move {
-            let reader = StdinReader::new();
-            reader.run(sender).await
-        }))
-    } else {
-        if verbose {
-            info!("Stdin ingestion disabled");
-        }
-        // Drop the sender so the receiver knows no more messages are coming
-        drop(sender);
-        None
-    };
+    // Create and start the ingestion manager
+    let mut ingestion = IngestionManager::new(config.ingestion.clone(), sender);
+    let source_count = ingestion.start();
+
+    if source_count == 0 {
+        eprintln!("Warning: No ingestion sources enabled. Enable stdin, tcp, or udp in config.");
+        return Ok(());
+    }
+
+    if verbose {
+        info!(
+            sources = source_count,
+            stdin = ingestion.has_stdin(),
+            network = ingestion.has_network(),
+            "Ingestion started"
+        );
+    }
 
     // Process log entries
-    let mut processed_count = 0;
+    let mut processed_count: u64 = 0;
     while let Some(entry) = receiver.recv().await {
         match pipeline.process(entry) {
             Ok(enriched) => {
@@ -128,21 +131,8 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Wait for stdin reader to complete
-    if let Some(handle) = stdin_handle {
-        match handle.await {
-            Ok(Ok(lines)) => {
-                if verbose {
-                    info!(lines_read = lines, processed = processed_count, "Processing complete");
-                }
-            }
-            Ok(Err(e)) => {
-                eprintln!("Error: {}", e);
-            }
-            Err(e) => {
-                eprintln!("Error: {}", e);
-            }
-        }
+    if verbose {
+        info!(processed = processed_count, "Processing complete");
     }
 
     Ok(())
