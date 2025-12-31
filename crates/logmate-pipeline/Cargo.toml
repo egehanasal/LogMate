@@ -1,0 +1,13 @@
+[package]
+name = "logmate-pipeline"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Pipeline orchestration for LogMate"
+
+[dependencies]
+logmate-core = { workspace = true }
+logmate-modules = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
