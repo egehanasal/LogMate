@@ -39,8 +39,32 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Pattern matching
 regex = "1"
 
+# File watching
+notify = "6"
+glob = "0.3"
+
 # Time
 chrono = { version = "0.4", features = ["serde"] }
+
+# Performance metrics
+hdrhistogram = "7"
+
+# Security pattern matching
+aho-corasick = "1"
+
+# Compression
+flate2 = "1"
+
+# HTTP client (for Loki)
+reqwest = { version = "0.12", features = ["json"] }
+
+# Prometheus metrics
+prometheus = "0.13"
+
+# HTTP server (for metrics endpoint)
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
 
 # Internal crates
 logmate-core = { path = "crates/logmate-core" }
@@ -48,3 +72,6 @@ logmate-ingestion = { path = "crates/logmate-ingestion" }
 logmate-pipeline = { path = "crates/logmate-pipeline" }
 logmate-modules = { path = "crates/logmate-modules" }
 logmate-output = { path = "crates/logmate-output" }
+
+# Testing
+tempfile = "3"
