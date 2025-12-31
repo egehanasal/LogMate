@@ -3,9 +3,15 @@
 //! Input sources for the LogMate observability engine.
 //! Supports stdin, TCP, UDP, and file watching.
 
+pub mod manager;
 pub mod stdin;
+pub mod tcp;
+pub mod udp;
 
+pub use manager::IngestionManager;
 pub use stdin::StdinReader;
+pub use tcp::TcpIngestion;
+pub use udp::UdpIngestion;
 
 use logmate_core::LogEntry;
 use tokio::sync::mpsc;
